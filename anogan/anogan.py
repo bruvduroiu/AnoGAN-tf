@@ -126,9 +126,6 @@ class AnoGAN:
                 _, summary = sess.run([self.D_train_op, self.summary_op], feed_dict={self.X: real_in, self.z: z_in})
                 _, global_step = sess.run([self.G_train_op, self.global_step], feed_dict={self.z: z_in})
 
-                if i % print_interval == 0:
-                    print(summary)
-
             z_ = sample_z(num=1)
 
             fake_samples = sess.run(self.fake_sample, feed_dict={self.z: z_})
