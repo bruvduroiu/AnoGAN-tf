@@ -97,7 +97,7 @@ class AnoGAN:
             with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                                 normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
                 net = slim.fully_connected(net, 200)
-                net = slim.fully_connected(net, 100, normalizer_fn=None)
+                net = slim.fully_connected(net, 100, activation_fn=None, normalizer_fn=None)
 
                 return net
 
