@@ -92,7 +92,8 @@ class AnoGAN:
     def _generator(self, z, reuse=False):
         with tf.variable_scope('G', reuse=reuse):
             net = z
-            net = slim.fully_connected(net, 100, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 100, activation_fn=tf.nn.relu,
+                                       normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params)
             
             with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                                 normalizer_fn=slim.batch_norm, normalizer_params=self.bn_params):
