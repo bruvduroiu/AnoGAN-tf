@@ -91,7 +91,7 @@ class AnoGAN:
 
             W_in = slim.fully_connected(z, 100, activation_fn=tf.nn.relu)
             W_hid = slim.fully_connected(W_in, 200, activation_fn=tf.nn.relu)
-            W_out = slim.fully_connected(W_hid, 100, activation_fn=tf.nn.sigmoid)
+            W_out = slim.fully_connected(W_hid, 100, activation_fn=None)
 
             return W_out
 
