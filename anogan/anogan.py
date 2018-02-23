@@ -120,6 +120,7 @@ class AnoGAN:
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             sess.run(tf.local_variables_initializer())
+            train_writer = tf.summary.FileWriter('./train', sess.graph)
             for i in range(epochs):
                 z_in = sample_z(num=batch_size)
                 real_in = np.random.normal(loc=REAL_MEAN, scale=REAL_STD, size=(batch_size, 100))
@@ -127,10 +128,15 @@ class AnoGAN:
                 _, summary = sess.run([self.D_train_op, self.summary_op], feed_dict={self.X: real_in, self.z: z_in})
                 _, global_step = sess.run([self.G_train_op, self.global_step], feed_dict={self.z: z_in})
 
+                if i % print_interval == 0:
+                    train_writer.add_summary(summary, i)
+
             z_ = sample_z(num=1)
 
             fake_samples = sess.run(self.fake_sample, feed_dict={self.z: z_})
 
+            train_writer.close()
+            
             return fake_samples
 
     def generate_sample(self, num_sample=1):
