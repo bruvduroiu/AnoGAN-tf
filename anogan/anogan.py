@@ -13,9 +13,45 @@ def lrelu(x, leak=0.2, name='lrelu'):
 def sample_z(num):
     return np.random.uniform(-1.0, 1.0, size=(num, 100))
 
+
 def sample_training_data(num):
     REAL_MEAN, REAL_STD = 4., 1.25
     return np.random.normal(loc=REAL_MEAN, scale=REAL_STD, size=(num, 100))
+
+
+def reduce_var(x, axis=None, keepdims=False):
+    """Variance of a tensor, alongisde the specified axis.
+    
+    # Arguments
+        x: A tensor or variable
+        axis: An integer, the axis to compute the variance
+        keepdims: A boolean, whether to keep the dimensions or not.
+            If `keepdims` is `False`, the rank of the tensor is reduced
+            by 1. If `keepdims` is `True`,
+            the reduced dimension is retained with length 1.
+
+    # Returns
+        A tensor with variance of elements of `x`.
+    """
+    m = tf.reduce_mean(x, axis=axis, keep_dims=True)
+    devs_squared = tf.square(x - m)
+    return tf.reduce_mean(devs_squared, axis=axis, keep_dims=keepdims)
+
+
+def reduce_std(x, axis=None, keepdims=False):
+    """Standard deviation of a tensor, alongside the specified axis.
+
+    # Arguments
+        x: A tensor or variable
+        axis: An integer, the axis to compute the variance
+        keepdims: A boolean, whether to keep the dimensions or not.
+            If `keepdims` is `False`, the rank of the tensor is reduced
+            by 1. If `keepdims` is `True`,
+            the reduced dimension is retained with length 1.
+    # Returns
+        A tensor with the standard deviation of elements of `x`.
+    """
+    return tf.sqrt(reduce_var(x, axis=axis, keepdims=keepdims))
 
 
 class AnoGAN:
@@ -42,6 +78,9 @@ class AnoGAN:
             D_real_prob, D_real_logits = self._discriminator(X)
             D_fake_prob, D_fake_logits = self._discriminator(G, reuse=True)
 
+            G_mean = tf.reduce_mean(G)
+            G_std = reduce_std(G)
+
             G_loss = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_fake_logits), logits=D_fake_logits)
             D_loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_real_logits), logits=D_real_logits)
             D_loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(D_fake_logits), logits=D_fake_logits)
@@ -66,7 +105,9 @@ class AnoGAN:
                 tf.summary.scalar('G_loss', G_loss),
                 tf.summary.scalar('D_loss', D_loss),
                 tf.summary.scalar('D_loss/real', D_loss_real),
-                tf.summary.scalar('D_loss/fake', D_loss_fake)
+                tf.summary.scalar('D_loss/fake', D_loss_fake),
+                tf.summary.scalar('G_mean', G_mean),
+                tf.summary.scalar('G_std', G_std)
             ])
 
             # Summary: samples and stuff

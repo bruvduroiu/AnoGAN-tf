@@ -1,6 +1,6 @@
 import numpy as np
 
-from anogan.anogan2 import AnoGAN
+from anogan.anogan import AnoGAN
 
 if __name__ == '__main__':
     model = AnoGAN()
