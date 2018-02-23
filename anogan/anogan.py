@@ -101,14 +101,12 @@ class AnoGAN:
 
             
             # Summary: losses
-            self.summary_op = tf.summary.merge([
-                tf.summary.scalar('G_loss', G_loss),
-                tf.summary.scalar('D_loss', D_loss),
-                tf.summary.scalar('D_loss/real', D_loss_real),
-                tf.summary.scalar('D_loss/fake', D_loss_fake),
-                tf.summary.scalar('G_mean', G_mean),
-                tf.summary.scalar('G_std', G_std)
-            ])
+            tf.summary.scalar('G_loss', G_loss)
+            tf.summary.scalar('D_loss', D_loss)
+            tf.summary.scalar('D_loss/real', D_loss_real)
+            tf.summary.scalar('D_loss/fake', D_loss_fake)
+            tf.summary.scalar('G_mean', G_mean)
+            tf.summary.scalar('G_std', G_std)
 
             # Summary: samples and stuff
             tf.summary.histogram('fake_sample', G)
