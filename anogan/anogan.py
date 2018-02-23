@@ -54,10 +54,10 @@ class AnoGAN:
             G_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name + '/G/')
 
             with tf.control_dependencies(D_update_ops):
-                D_train_op = tf.train.GradientDescentOptimizer(learning_rate=self.D_lr).\
+                D_train_op = tf.train.MomentumOptimizer(learning_rate=self.D_lr, momentum=0.9, use_nesterov=True).\
                     minimize(D_loss, var_list=D_vars)
             with tf.control_dependencies(G_update_ops):
-                G_train_op = tf.train.GradientDescentOptimizer(learning_rate=self.G_lr).\
+                G_train_op = tf.train.MomentumOptimizer(learning_rate=self.G_lr, momentum=0.9, use_nesterov=True).\
                     minimize(G_loss, var_list=G_vars)
 
             
