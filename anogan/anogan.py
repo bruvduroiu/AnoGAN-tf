@@ -19,6 +19,11 @@ def sample_training_data(num):
     REAL_COV = np.array([[1.,0.],[0.,1.]])
     return np.random.multivariate_normal(REAL_MEAN, REAL_COV, size=(num,100))
 
+def sample_test_data(num):
+    test_data = sample_training_data(num)
+    test_data[0][1] = [10,10]
+    return test_data
+
 
 def reduce_var(x, axis=None, keepdims=False):
     """Variance of a tensor, alongisde the specified axis.
@@ -150,22 +155,47 @@ class AnoGAN:
 
                 return prob, logits
 
-    def _sampler(self, z, y=None, batch_size=None):
-        with tf.variable_scope('G') as scope:
-            scope.reuse_variables()
-            
-            net = z
-            net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
-            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
-            net = slim.fully_connected(net, 200, activation_fn=None)
-            net = tf.reshape(net, [100, 2])
+    def _discriminator_feature_match(self, X, reuse=False):
+        with tf.variable_scope('D', reuse=reuse):
+            if reuse:
+                tf.get_variable_scope().reuse_variables()
+            net = X
+            net = tf.reshape(net, [tf.shape(net)[0], 100*2])
+            with slim.arg_scope([slim.fully_connected], activation_fn=lrelu):
+                net = slim.fully_connected(net, 200)
+                net = slim.fully_connected(net, 50)
 
+                return net
 
+    def anomaly_detector(self, lambda_ano=0.1, reuse=False):
+        with tf.variable_scope('AnoD', reuse=reuse):
+            self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
+            test_inputs = self.test_inputs
 
-    def _anomaly_detector(self, X, lambda_ano=0.1):
-        self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32)
+            self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32,
+                                        initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
 
-        self.ano_G = self._generator(ano_z)
+            self.ano_G = self._generator(self.ano_z, reuse=True)
+
+            # Residual loss
+            self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
+
+            # Discriminator loss
+            d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
+            d_feature_in = self._discriminator_feature_match(test_inputs, reuse=True)
+            self.dis_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(d_feature_in, d_feature_z))))
+
+            self.anomaly_score = (1 - lambda_ano) * self.res_loss + lambda_ano * self.dis_loss
+
+            ano_z_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='AnoD')
+
+            ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='AnoD')
+
+            with tf.control_dependencies(ano_z_update_ops):
+                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
+                    minimize(self.anomaly_score, var_list=ano_z_vars)
+
+            self.ano_z_train_op = ano_z_train_op
 
     def train(self, batch_size=100, epochs=30000, print_interval=500):
         self.sess.run(tf.global_variables_initializer())
@@ -187,3 +217,17 @@ class AnoGAN:
         train_writer.close()
 
         return fake_samples
+
+    def train_anomaly_detector(self, epochs=3000, print_interval=100):
+        self.sess.run(tf.global_variables_initializer())
+        self.sess.run(self.ano_z.initializer)
+        test_data = sample_test_data(num=1)
+
+        for epoch in range(epochs):
+            _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})
+
+            if epoch % print_interval == 0:
+                print("Epoch: [{:05d}], anomaly score: {:.8f}, res loss: {:.8f}".format(epoch, ano_score, res_loss))
+
+        samples = self.sess.run(self.ano_G)
+        return samples-test_data
