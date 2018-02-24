@@ -15,8 +15,9 @@ def sample_z(num):
 
 
 def sample_training_data(num):
-    REAL_MEAN, REAL_STD = 4., 1.25
-    return np.random.normal(loc=REAL_MEAN, scale=REAL_STD, size=(num, 100))
+    REAL_MEAN = np.array([3.,4.])
+    REAL_COV = np.array([[1.,0.],[0.,1.]])
+    return np.random.multivariate_normal(REAL_MEAN, REAL_COV, size=(num,100))
 
 
 def reduce_var(x, axis=None, keepdims=False):
@@ -55,7 +56,7 @@ def reduce_std(x, axis=None, keepdims=False):
 
 
 class AnoGAN:
-    def __init__(self, name='AnoGAN', training=True, D_lr=2e-4, G_lr=2e-4, in_shape=[100,], z_dim=100):
+    def __init__(self, name='AnoGAN', training=True, D_lr=2e-4, G_lr=2e-4, in_shape=[100,2], z_dim=100):
         self.name = name
         self.shape = in_shape
         self.beta1 = 0.5
@@ -63,6 +64,7 @@ class AnoGAN:
         self.D_lr = D_lr
         self.G_lr = D_lr
         self.args = vars(self).copy()
+        self.sess = tf.Session()
 
         if training:
             self._build_train_graph()
@@ -127,43 +129,61 @@ class AnoGAN:
         with tf.variable_scope('G', reuse=reuse):
             if reuse:
                 tf.get_variable_scope().reuse_variables()
+            net = z
+            net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 200, activation_fn=None)
+            net = tf.reshape(net, [-1, 100, 2])
 
-            W_in = slim.fully_connected(z, 100, activation_fn=tf.nn.relu)
-            W_hid = slim.fully_connected(W_in, 200, activation_fn=tf.nn.relu)
-            W_out = slim.fully_connected(W_hid, 100, activation_fn=None)
-
-            return W_out
+            return net
 
     def _discriminator(self, X, reuse=False):
         with tf.variable_scope('D', reuse=reuse):
-
+            net = X
+            net = tf.reshape(net, [tf.shape(net)[0], 100*2])
             with slim.arg_scope([slim.fully_connected], activation_fn=lrelu):
-                W_in = slim.fully_connected(X, 100)
-                W_hid = slim.fully_connected(W_in, 50)
+                net = slim.fully_connected(net, 200)
+                net = slim.fully_connected(net, 50)
 
-                logits = slim.fully_connected(W_hid, 1, activation_fn=None)
+                logits = slim.fully_connected(net, 1, activation_fn=None)
                 prob = tf.sigmoid(logits)
 
                 return prob, logits
 
-    def train(self, batch_size=100, epochs=30000, print_interval=500):
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            train_writer = tf.summary.FileWriter('./train', sess.graph)
-
-            for i in range(epochs):
-                z_ = sample_z(num=batch_size)
-                real_ = sample_training_data(num=batch_size)
-
-                _, summary = sess.run([self.D_train_op, self.all_summary_op], feed_dict={self.X: real_, self.z: z_})
-                sess.run(self.G_train_op, feed_dict={self.z: z_})
-
-                if i % print_interval == 0:
-                    train_writer.add_summary(summary, i)
-
-            z_ = sample_z(num=1)
-            fake_samples = sess.run(self.fake_sample, feed_dict={self.z: z_})
+    def _sampler(self, z, y=None, batch_size=None):
+        with tf.variable_scope('G') as scope:
+            scope.reuse_variables()
             
-            train_writer.close()
+            net = z
+            net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 200, activation_fn=None)
+            net = tf.reshape(net, [100, 2])
 
-            return fake_samples
+
+
+    def _anomaly_detector(self, X, lambda_ano=0.1):
+        self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32)
+
+        self.ano_G = self._generator(ano_z)
+
+    def train(self, batch_size=100, epochs=30000, print_interval=500):
+        self.sess.run(tf.global_variables_initializer())
+        train_writer = tf.summary.FileWriter('./train', self.sess.graph)
+
+        for i in range(epochs):
+            z_ = sample_z(num=batch_size)
+            real_ = sample_training_data(num=batch_size)
+
+            _, summary = self.sess.run([self.D_train_op, self.all_summary_op], feed_dict={self.X: real_, self.z: z_})
+            self.sess.run(self.G_train_op, feed_dict={self.z: z_})
+
+            if i % print_interval == 0:
+                train_writer.add_summary(summary, i)
+
+        z_ = sample_z(num=1)
+        fake_samples = self.sess.run(self.fake_sample, feed_dict={self.z: z_})
+        
+        train_writer.close()
+
+        return fake_samples
