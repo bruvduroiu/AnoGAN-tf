@@ -168,34 +168,34 @@ class AnoGAN:
                 return net
 
     def anomaly_detector(self, lambda_ano=0.1, reuse=False):
-        with tf.variable_scope('AnoD', reuse=reuse):
-            self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
-            test_inputs = self.test_inputs
+        self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
+        test_inputs = self.test_inputs
 
+        with tf.variable_scope('AnoD', reuse=reuse):
             self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32,
                                         initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
 
-            self.ano_G = self._generator(self.ano_z, reuse=True)
+        self.ano_G = self._generator(self.ano_z, reuse=True)
 
-            # Residual loss
-            self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
+        # Residual loss
+        self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
 
-            # Discriminator loss
-            d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
-            d_feature_in = self._discriminator_feature_match(test_inputs, reuse=True)
-            self.dis_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(d_feature_in, d_feature_z))))
+        # Discriminator loss
+        d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
+        d_feature_in = self._discriminator_feature_match(test_inputs, reuse=True)
+        self.dis_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(d_feature_in, d_feature_z))))
 
-            self.anomaly_score = (1 - lambda_ano) * self.res_loss + lambda_ano * self.dis_loss
+        self.anomaly_score = (1 - lambda_ano) * self.res_loss + lambda_ano * self.dis_loss
 
-            ano_z_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='AnoD')
+        ano_z_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='AnoD')
 
-            ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='AnoD')
+        ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='AnoD')
 
-            with tf.control_dependencies(ano_z_update_ops):
-                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
-                    minimize(self.anomaly_score, var_list=ano_z_vars)
+        with tf.control_dependencies(ano_z_update_ops):
+            ano_z_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
+                minimize(self.anomaly_score, var_list=ano_z_vars)
 
-            self.ano_z_train_op = ano_z_train_op
+        self.ano_z_train_op = ano_z_train_op
 
     def train(self, batch_size=100, epochs=30000, print_interval=500):
         self.sess.run(tf.global_variables_initializer())
