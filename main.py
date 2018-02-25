@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from anogan.anogan import AnoGAN
 
 if __name__ == '__main__':
+    tf.reset_default_graph()
     model = AnoGAN()
     training_result = model.train(epochs=300, print_interval=10)
 

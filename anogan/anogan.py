@@ -184,8 +184,9 @@ class AnoGAN:
             self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
             test_inputs = self.test_inputs
 
-            self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32,
-                                    initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
+            with tf.variable_scope('AnoD'):
+                self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32,
+                                        initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
 
             self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
@@ -199,9 +200,9 @@ class AnoGAN:
 
             self.anomaly_score = (1 - lambda_ano) * self.res_loss + lambda_ano * self.dis_loss
 
-            ano_z_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='ano_z')
+            ano_z_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope= self.name + '/AnoD/')
 
-            ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='ano_z')
+            ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name + '/AnoD/')
 
             with tf.control_dependencies(ano_z_update_ops):
                 ano_z_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
