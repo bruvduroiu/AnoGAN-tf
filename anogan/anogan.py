@@ -131,8 +131,8 @@ class AnoGAN:
         pass
 
     def _sampler(self, z, y=None, batch_size=1):
-        with tf.variable_scope('G') as scope:
-            scope.reuse_variables()
+        with tf.variable_scope('G', reuse=True) as scope:
+            tf.get_variable_scope().reuse_variables()
 
             net = z
             net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
