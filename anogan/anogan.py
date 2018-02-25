@@ -130,6 +130,18 @@ class AnoGAN:
     def _build_gen_graph(self):
         pass
 
+    def _sampler(self, z, y=None, batch_size=1):
+        with tf.variable_scope('G') as scope:
+            scope.reuse_variables()
+
+            net = z
+            net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 200, activation_fn=None)
+            net = tf.reshape(net, [-1, 100, 2])
+
+            return net
+
     def _generator(self, z, reuse=False):
         with tf.variable_scope('G', reuse=reuse):
             if reuse:
@@ -172,9 +184,9 @@ class AnoGAN:
         test_inputs = self.test_inputs
 
         self.ano_z = tf.get_variable('ano_z', shape=[1, self.z_dim], dtype=tf.float32,
-                                    initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
+                                initializer=tf.random_uniform_initializer(-1, 1, dtype=tf.float32))
 
-        self.ano_G = self._generator(self.ano_z, reuse=True)
+        self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
         # Residual loss
         self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
