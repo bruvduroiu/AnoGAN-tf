@@ -167,7 +167,7 @@ class AnoGAN:
 
                 return net
 
-    def anomaly_detector(self, lambda_ano=0.1, reuse=False):
+    def anomaly_detector(self, lambda_ano=0.1, reuse=True):
         self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
         test_inputs = self.test_inputs
 
