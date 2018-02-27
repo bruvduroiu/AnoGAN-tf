@@ -242,7 +242,7 @@ class AnoGAN:
         ano_score = 2e4
         epoch = 0
 
-        while ano_score < 100:
+        while ano_score > 100:
             _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})
             epoch += 1
 
