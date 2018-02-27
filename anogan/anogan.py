@@ -19,9 +19,10 @@ def sample_training_data(num):
     REAL_COV = np.array([[1.,0.],[0.,1.]])
     return np.random.multivariate_normal(REAL_MEAN, REAL_COV, size=(num,100))
 
-def sample_test_data(num):
+def sample_test_data(num, outlier=False):
     test_data = sample_training_data(num)
-    test_data[0][1] = [10,10]
+    if outlier:
+        test_data[0][1] = [10,10]
     return test_data
 
 
@@ -232,10 +233,10 @@ class AnoGAN:
 
         return fake_samples
 
-    def train_anomaly_detector(self, epochs=3000, print_interval=100):
+    def train_anomaly_detector(self, epochs=3000, print_interval=100, outlier=False):
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(self.ano_z.initializer)
-        test_data = sample_test_data(num=1)
+        test_data = sample_test_data(num=1, outlier=outlier)
 
         for epoch in range(epochs):
             _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})

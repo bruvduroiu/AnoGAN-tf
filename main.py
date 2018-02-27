@@ -11,13 +11,14 @@ from anogan.anogan import AnoGAN
 @click.option('--g-print-interval', '-p', default=10, help='Print output every x epochs.')
 @click.option('--a-epochs', default=300, help='Num. epochs to train anomaly detector for.')
 @click.option('--a-print-interval', default=10, help='Print output every x epochs.')
-def main(display, g_epochs, g_print_interval, a_epochs, a_print_interval):
+@click.option('--outlier/--no-outlier', default=False)
+def main(display, g_epochs, g_print_interval, a_epochs, a_print_interval, outlier):
     tf.reset_default_graph()
     model = AnoGAN()
     training_result = model.train(epochs=g_epochs, print_interval=g_print_interval)
 
     model.anomaly_detector()
-    generated, test_data = model.train_anomaly_detector(epochs=a_epochs, print_interval=a_print_interval)
+    generated, test_data = model.train_anomaly_detector(epochs=a_epochs, print_interval=a_print_interval, outlier=outlier)
     
     if display:
         import matplotlib.pyplot as plt
