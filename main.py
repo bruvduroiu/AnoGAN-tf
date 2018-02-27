@@ -7,15 +7,17 @@ from anogan.anogan import AnoGAN
 
 @click.command()
 @click.option('--display/--no-display', default=False)
-@click.option('--epochs', '-e', default=300, help='Num. epochs to train for.')
-@click.option('--print-interval', '-p', default=10, help='Print output every x epochs.')
-def main(display, epochs, print_interval):
+@click.option('--g-epochs', '-e', default=300, help='Num. epochs to train for.')
+@click.option('--g-print-interval', '-p', default=10, help='Print output every x epochs.')
+@click.option('--a-epochs', default=300, help='Num. epochs to train anomaly detector for.')
+@click.option('--a-print-interval', default=10, help='Print output every x epochs.')
+def main(display, g_epochs, g_print_interval, a_epochs, a_print_interval):
     tf.reset_default_graph()
     model = AnoGAN()
-    training_result = model.train(epochs=epochs, print_interval=print_interval)
+    training_result = model.train(epochs=g_epochs, print_interval=g_print_interval)
 
     model.anomaly_detector()
-    generated, test_data = model.train_anomaly_detector(epochs=3000, print_interval=100)
+    generated, test_data = model.train_anomaly_detector(epochs=a_epochs, print_interval=a_print_interval)
     
     if display:
         import matplotlib.pyplot as plt

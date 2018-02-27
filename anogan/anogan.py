@@ -223,6 +223,7 @@ class AnoGAN:
 
             if i % print_interval == 0:
                 train_writer.add_summary(summary, i)
+                print('Epoch: {:05d}'.format(i))
 
         z_ = sample_z(num=1)
         fake_samples = self.sess.run(self.fake_sample, feed_dict={self.z: z_})
