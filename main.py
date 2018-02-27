@@ -1,7 +1,6 @@
 import click
 
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from anogan.anogan import AnoGAN
@@ -16,6 +15,12 @@ def main(display):
     model.anomaly_detector()
     generated, test_data = model.train_anomaly_detector(epochs=3, print_interval=1)
     
+    if display:
+        import matplotlib.pyplot as plt
+    else:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.scatter(generated[0,:,0], generated[0,:,1], c='b', alpha=0.7)
