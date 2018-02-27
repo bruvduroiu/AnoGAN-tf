@@ -239,9 +239,12 @@ class AnoGAN:
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(self.ano_z.initializer)
         test_data = sample_test_data(num=1, outlier=outlier)
+        ano_score = 2e4
+        epoch = 0
 
-        for epoch in range(epochs):
+        while ano_score < 100:
             _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})
+            epoch += 1
 
             if epoch % print_interval == 0:
                 print("Epoch: [{:05d}], anomaly score: {:.8f}, res loss: {:.8f}".format(epoch, ano_score, res_loss))
