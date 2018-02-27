@@ -208,7 +208,7 @@ class AnoGAN:
             ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name + '/AnoD/')
 
             with tf.control_dependencies(ano_z_update_ops):
-                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=1e-3, beta1=self.beta1).\
+                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=1e-2, beta1=self.beta1).\
                     minimize(self.anomaly_score, var_list=ano_z_vars)
 
             self.ano_z_train_op = ano_z_train_op
