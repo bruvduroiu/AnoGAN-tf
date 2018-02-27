@@ -12,12 +12,13 @@ from anogan.anogan import AnoGAN
 @click.option('--a-epochs', default=300, help='Num. epochs to train anomaly detector for.')
 @click.option('--a-print-interval', default=10, help='Print output every x epochs.')
 @click.option('--outlier/--no-outlier', default=False)
-def main(display, g_epochs, g_print_interval, a_epochs, a_print_interval, outlier):
+@click.option('--lambda-ano', default=0.1)
+def main(display, g_epochs, g_print_interval, a_epochs, a_print_interval, outlier, lambda_ano):
     tf.reset_default_graph()
     model = AnoGAN()
     training_result = model.train(epochs=g_epochs, print_interval=g_print_interval)
 
-    model.anomaly_detector()
+    model.anomaly_detector(lambda_ano=lambda_ano)
     generated, test_data = model.train_anomaly_detector(epochs=a_epochs, print_interval=a_print_interval, outlier=outlier)
     
     if display:
