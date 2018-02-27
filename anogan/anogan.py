@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 slim = tf.contrib.slim
+from pyemd import emd_samples
 
 # Helper functions
 def lrelu(x, leak=0.2, name='lrelu'):
@@ -194,7 +195,7 @@ class AnoGAN:
             self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
             # Residual loss
-            self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
+            self.res_loss = emd_samples(test_inputs, self.ano_G)
 
             # Discriminator loss
             d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
