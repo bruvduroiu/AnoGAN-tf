@@ -243,4 +243,4 @@ class AnoGAN:
                 print("Epoch: [{:05d}], anomaly score: {:.8f}, res loss: {:.8f}".format(epoch, ano_score, res_loss))
 
         samples = self.sess.run(self.ano_G)
-        return samples-test_data
+        return samples, test_data
