@@ -195,7 +195,7 @@ class AnoGAN:
             self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
             # Residual loss
-            self.res_loss = emd_samples(test_inputs, self.ano_G)
+            self.res_loss = tf.constant(emd_samples(test_inputs, self.ano_G))
 
             # Discriminator loss
             d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
