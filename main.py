@@ -15,7 +15,7 @@ def main(display, epochs, print_interval):
     training_result = model.train(epochs=epochs, print_interval=print_interval)
 
     model.anomaly_detector()
-    generated, test_data = model.train_anomaly_detector(epochs=3, print_interval=1)
+    generated, test_data = model.train_anomaly_detector(epochs=3000, print_interval=100)
     
     if display:
         import matplotlib.pyplot as plt
