@@ -77,6 +77,8 @@ class AnoGAN:
         else:
             self._build_gen_graph()
 
+        np.random.seed(1234)
+
     def _build_train_graph(self):
         with tf.variable_scope(self.name):
             X = tf.placeholder(tf.float32, [None] + self.shape)
@@ -206,7 +208,7 @@ class AnoGAN:
             ano_z_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=self.name + '/AnoD/')
 
             with tf.control_dependencies(ano_z_update_ops):
-                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=self.D_lr, beta1=self.beta1).\
+                ano_z_train_op = tf.train.AdamOptimizer(learning_rate=1e-3, beta1=self.beta1).\
                     minimize(self.anomaly_score, var_list=ano_z_vars)
 
             self.ano_z_train_op = ano_z_train_op
