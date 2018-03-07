@@ -1,0 +1,5 @@
+click>=6.7
+boto3>=1.5.32
+matplotlib>=2.1.0
+pyemd>=0.5.1
+numpy>=1.13.3

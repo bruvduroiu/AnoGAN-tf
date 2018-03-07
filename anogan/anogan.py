@@ -27,7 +27,7 @@ def sample_test_data(num, outlier=False):
     return test_data
 
 
-def reduce_var(x, axis=None, keepdims=False):
+def reduce_var(x, axis=None):
     """Variance of a tensor, alongisde the specified axis.
     
     # Arguments
@@ -41,12 +41,12 @@ def reduce_var(x, axis=None, keepdims=False):
     # Returns
         A tensor with variance of elements of `x`.
     """
-    m = tf.reduce_mean(x, axis=axis, keep_dims=True)
+    m = tf.reduce_mean(x, axis=axis)
     devs_squared = tf.square(x - m)
-    return tf.reduce_mean(devs_squared, axis=axis, keep_dims=keepdims)
+    return tf.reduce_mean(devs_squared, axis=axis)
 
 
-def reduce_std(x, axis=None, keepdims=False):
+def reduce_std(x, axis=None):
     """Standard deviation of a tensor, alongside the specified axis.
 
     # Arguments
@@ -59,7 +59,7 @@ def reduce_std(x, axis=None, keepdims=False):
     # Returns
         A tensor with the standard deviation of elements of `x`.
     """
-    return tf.sqrt(reduce_var(x, axis=axis, keepdims=keepdims))
+    return tf.sqrt(reduce_var(x, axis=axis))
 
 
 class AnoGAN:
@@ -195,7 +195,7 @@ class AnoGAN:
             self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
             # Residual loss
-            self.res_loss = tf.constant(emd_samples(test_inputs, self.ano_G))
+            self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
 
             # Discriminator loss
             d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
@@ -240,12 +240,9 @@ class AnoGAN:
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(self.ano_z.initializer)
         test_data = sample_test_data(num=1, outlier=outlier)
-        ano_score = 2e4
-        epoch = 0
 
-        while ano_score > 100:
+        for epoch in range(epochs):
             _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})
-            epoch += 1
 
             if epoch % print_interval == 0:
                 print("Epoch: [{:05d}], anomaly score: {:.8f}, res loss: {:.8f}".format(epoch, ano_score, res_loss))
