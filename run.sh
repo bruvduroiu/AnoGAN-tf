@@ -12,6 +12,7 @@ docker build -t anogan-tf .
     --g-print-interval 1000 \
     --a-epochs 30000 \
     --a-print-interval 1000 \
+    --lambda-ano 0.1 \
     --outlier \
     --s3-bucket dissertation-backups \
     --s3-path results/anogan

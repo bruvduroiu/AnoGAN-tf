@@ -3,6 +3,11 @@ import tensorflow as tf
 slim = tf.contrib.slim
 from pyemd import emd_samples
 
+from utils.gaussian_data import (
+    multivariate_normal_sampler,
+    sample_z,
+)
+
 # Helper functions
 def lrelu(x, leak=0.2, name='lrelu'):
     with tf.variable_scope(name):
@@ -11,67 +16,54 @@ def lrelu(x, leak=0.2, name='lrelu'):
         return f1 * x + f2 * abs(x)
 
 
-def sample_z(num):
-    return np.random.uniform(-1.0, 1.0, size=(num, 100))
+def reduce_var(x, axis=None, keepdims=False):
+    """Variance of a tensor, alongside the specified axis.
 
-
-def sample_training_data(num):
-    REAL_MEAN = np.array([3.,4.])
-    REAL_COV = np.array([[1.,0.],[0.,1.]])
-    return np.random.multivariate_normal(REAL_MEAN, REAL_COV, size=(num,100))
-
-def sample_test_data(num, outlier=False):
-    test_data = sample_training_data(num)
-    if outlier:
-        test_data[0][1] = [10,10]
-    return test_data
-
-
-def reduce_var(x, axis=None):
-    """Variance of a tensor, alongisde the specified axis.
-    
     # Arguments
-        x: A tensor or variable
-        axis: An integer, the axis to compute the variance
+        x: A tensor or variable.
+        axis: An integer, the axis to compute the variance.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
             the reduced dimension is retained with length 1.
 
     # Returns
-        A tensor with variance of elements of `x`.
+        A tensor with the variance of elements of `x`.
     """
-    m = tf.reduce_mean(x, axis=axis)
+    m = tf.reduce_mean(x, axis=axis, keepdims=True)
     devs_squared = tf.square(x - m)
-    return tf.reduce_mean(devs_squared, axis=axis)
+    return tf.reduce_mean(devs_squared, axis=axis, keepdims=keepdims)
 
-
-def reduce_std(x, axis=None):
+def reduce_std(x, axis=None, keepdims=False):
     """Standard deviation of a tensor, alongside the specified axis.
 
     # Arguments
-        x: A tensor or variable
-        axis: An integer, the axis to compute the variance
+        x: A tensor or variable.
+        axis: An integer, the axis to compute the standard deviation.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
             the reduced dimension is retained with length 1.
+
     # Returns
         A tensor with the standard deviation of elements of `x`.
     """
-    return tf.sqrt(reduce_var(x, axis=axis))
+    return tf.sqrt(reduce_var(x, axis=axis, keepdims=keepdims))
 
 
 class AnoGAN:
     def __init__(self, name='AnoGAN', training=True, D_lr=2e-4, G_lr=2e-4, in_shape=[100,2], z_dim=100):
         self.name = name
         self.shape = in_shape
-        self.beta1 = 0.5
+        self.beta1 = 0.9
         self.z_dim = z_dim
         self.D_lr = D_lr
         self.G_lr = D_lr
         self.args = vars(self).copy()
         self.sess = tf.Session()
+
+        self.REAL_MEAN = np.array([2.,3.])
+        self.REAL_COV  = np.array([[1.,0.],[0.,1.]])
 
         if training:
             self._build_train_graph()
@@ -88,9 +80,6 @@ class AnoGAN:
             G = self._generator(z)
             D_real_prob, D_real_logits = self._discriminator(X)
             D_fake_prob, D_fake_logits = self._discriminator(G, reuse=True)
-
-            G_mean = tf.reduce_mean(G)
-            G_std = reduce_std(G)
 
             G_loss = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_fake_logits), logits=D_fake_logits)
             D_loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(D_real_logits), logits=D_real_logits)
@@ -116,8 +105,6 @@ class AnoGAN:
             tf.summary.scalar('D_loss', D_loss)
             tf.summary.scalar('D_loss/real', D_loss_real)
             tf.summary.scalar('D_loss/fake', D_loss_fake)
-            tf.summary.scalar('G_mean', G_mean)
-            tf.summary.scalar('G_std', G_std)
 
             # Summary: samples and stuff
             tf.summary.histogram('fake_sample', G)
@@ -140,7 +127,7 @@ class AnoGAN:
 
             net = z
             net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
-            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 600, activation_fn=tf.nn.relu)
             net = slim.fully_connected(net, 200, activation_fn=None)
             net = tf.reshape(net, [-1, 100, 2])
 
@@ -152,7 +139,7 @@ class AnoGAN:
                 tf.get_variable_scope().reuse_variables()
             net = z
             net = slim.fully_connected(net, 200, activation_fn=tf.nn.relu)
-            net = slim.fully_connected(net, 400, activation_fn=tf.nn.relu)
+            net = slim.fully_connected(net, 600, activation_fn=tf.nn.relu)
             net = slim.fully_connected(net, 200, activation_fn=None)
             net = tf.reshape(net, [-1, 100, 2])
 
@@ -183,7 +170,7 @@ class AnoGAN:
 
                 return net
 
-    def anomaly_detector(self, lambda_ano=0.1, reuse=True):
+    def construct_anomaly_detector(self, lambda_ano=0.1, reuse=True):
         with tf.variable_scope(self.name):
             self.test_inputs = tf.placeholder(tf.float32, shape=[1] + self.shape, name='test_scatter')
             test_inputs = self.test_inputs
@@ -195,7 +182,16 @@ class AnoGAN:
             self.ano_G = self._sampler(self.ano_z, None, batch_size=1)
 
             # Residual loss
-            self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
+            # self.res_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(tf.subtract(test_inputs, self.ano_G))))
+            self.res_loss = tf.add(
+                tf.abs(tf.subtract(
+                    tf.reduce_mean(test_inputs),
+                    tf.reduce_mean(self.ano_G)
+                )),
+                tf.abs(tf.subtract(
+                    reduce_std(test_inputs),
+                    reduce_std(self.ano_G)
+                )))
 
             # Discriminator loss
             d_feature_z = self._discriminator_feature_match(self.ano_G, reuse=True)
@@ -217,20 +213,22 @@ class AnoGAN:
     def train(self, batch_size=100, epochs=30000, print_interval=500):
         self.sess.run(tf.global_variables_initializer())
         train_writer = tf.summary.FileWriter('./train', self.sess.graph)
+        
+        train_sampler = multivariate_normal_sampler(self.REAL_MEAN, self.REAL_COV)
 
         for i in range(epochs):
-            z_ = sample_z(num=batch_size)
-            real_ = sample_training_data(num=batch_size)
+            z = sample_z(num=batch_size)
+            real = train_sampler(batch_size)
 
-            _, summary = self.sess.run([self.D_train_op, self.all_summary_op], feed_dict={self.X: real_, self.z: z_})
-            self.sess.run(self.G_train_op, feed_dict={self.z: z_})
+            _, summary = self.sess.run([self.D_train_op, self.all_summary_op], feed_dict={self.X: real, self.z: z})
+            self.sess.run(self.G_train_op, feed_dict={self.z: z})
 
             if i % print_interval == 0:
                 train_writer.add_summary(summary, i)
                 print('Epoch: {:05d}'.format(i))
 
-        z_ = sample_z(num=1)
-        fake_samples = self.sess.run(self.fake_sample, feed_dict={self.z: z_})
+        z = sample_z(num=1)
+        fake_samples = self.sess.run(self.fake_sample, feed_dict={self.z: z})
         
         train_writer.close()
 
@@ -239,7 +237,12 @@ class AnoGAN:
     def train_anomaly_detector(self, epochs=3000, print_interval=100, outlier=False):
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(self.ano_z.initializer)
-        test_data = sample_test_data(num=1, outlier=outlier)
+
+        sampler = multivariate_normal_sampler(self.REAL_MEAN, self.REAL_COV)
+        test_data = sampler(1)
+        if outlier:
+            test_data[0][0] = self.REAL_MEAN.dot(3 * self.REAL_COV)
+
 
         for epoch in range(epochs):
             _, ano_score, res_loss = self.sess.run([self.ano_z_train_op, self.anomaly_score, self.res_loss], feed_dict={self.test_inputs: test_data})
@@ -249,3 +252,7 @@ class AnoGAN:
 
         samples = self.sess.run(self.ano_G)
         return samples, test_data
+
+    def evaluate(self, data):
+        ano_score = self.sess.run([self.anomaly_score], feed_dict={self.test_inputs: data})
+        return ano_score
